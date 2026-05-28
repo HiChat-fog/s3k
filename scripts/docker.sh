@@ -1,3 +1,5 @@
 #!/bin/sh
 
-docker run -it --rm -v .:/workspace -w /workspace hakarlsson/riscv-picolibc
+WORKSPACE="$(pwd -P)"
+
+docker run -it --rm -v "$WORKSPACE:/workspace" -w /workspace hakarlsson/riscv-picolibc
