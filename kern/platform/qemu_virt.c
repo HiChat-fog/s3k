@@ -13,6 +13,7 @@
 #define RAM_PERM MEM_PERM_RWX
 #define RAM_BASE 0x80000000
 #define RAM_SIZE 0x10000000
+#define BOOT_RAM_SIZE  0x1000000
 
 // Define memory regions and permissions as constants
 #define UART_PERM MEM_PERM_RW
@@ -34,7 +35,7 @@ void kernel_init(void)
 	lock_init();
 	proc_init(RAM_BASE);
 
-	mem_pmp_set((pid_t)1, (index_t)0, (pmp_slot_t)1, RAM_PERM, pmp_napot_encode(RAM_BASE, RAM_SIZE));
+	mem_pmp_set((pid_t)1, (index_t)0, (pmp_slot_t)1, RAM_PERM, pmp_napot_encode(RAM_BASE, BOOT_RAM_SIZE));
 }
 
 void temporal_fence(void)
