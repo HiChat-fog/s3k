@@ -365,6 +365,17 @@ static proc_t *syscall_mon_vreg_set(pid_t pid, word_t args[8])
 }
 
 /**
+ * Get the state of the process being monitored by the specified monitor capability.
+ */
+static proc_t *syscall_mon_state_get(pid_t pid, word_t args[8])
+{
+	word_t value;
+	args[0] = mon_state_get(pid, args[1], &value);
+	args[1] = value;
+	return current;
+}
+
+/**
  * Get a time slice capability configuration of the process being monitored by the specified monitor capability.
  */
 static proc_t *syscall_mon_tsl_introspect(pid_t pid, word_t args[8])
@@ -695,6 +706,7 @@ handler_t handlers[] = {
 	syscall_mon_reg_set,
 	syscall_mon_vreg_get,
 	syscall_mon_vreg_set,
+	syscall_mon_state_get,
 	syscall_mon_mem_introspect,
 	syscall_mon_tsl_introspect,
 	syscall_mon_mon_introspect,

@@ -87,7 +87,7 @@ _trap_switch:
 	// Check if a context switch is needed.
 	// If the current process (a0) is the same as the next process (tp),
 	// jump directly to `trap_exit` without performing a context switch.
-	beq	a0,tp,trap_exit
+	beq	a0,tp,trap_resume
 
 	// Atomically update the process state to indicate it is no longer running.
 	// This ensures that the process state is updated safely in a multi-core environment.

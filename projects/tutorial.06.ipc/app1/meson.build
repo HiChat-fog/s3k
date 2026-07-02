@@ -10,6 +10,7 @@ app1_elf = executable(
 	c_args: [
 		'-specs=picolibc.specs',
 		'-DUART_REG_STRIDE=' + get_option('uart_stride'),
+        '-DMAX_MEMORY_FUEL=' + get_option('nmemoryfuel').to_string(),
 	],
 	link_args: [
 		'-nostartfiles',

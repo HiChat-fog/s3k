@@ -294,3 +294,18 @@ int mon_vreg_set(pid_t owner, index_t i, vreg_t reg, word_t value)
 		return ERR_INVALID_ARGUMENT;
 	}
 }
+
+/**
+ * Gets state for the process associated with the monitor capability.
+ */
+int mon_state_get(pid_t owner, index_t i, word_t *value)
+{
+	if (UNLIKELY(!mon_valid_access(owner, i))) {
+		return ERR_INVALID_ACCESS;
+	}
+
+	proc_t *proc = proc_get(mon_table[i].pid);
+	*value = proc->state;
+
+	return ERR_SUCCESS;
+}

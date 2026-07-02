@@ -34,6 +34,7 @@ enum {
 	S3K_SYSCALL_MON_REG_SET,
 	S3K_SYSCALL_MON_VREG_GET,
 	S3K_SYSCALL_MON_VREG_SET,
+	S3K_SYSCALL_MON_STATE_GET,
 	S3K_SYSCALL_MON_MEM_INTROSPECT,
 	S3K_SYSCALL_MON_TSL_INTROSPECT,
 	S3K_SYSCALL_MON_MON_INTROSPECT,
@@ -372,6 +373,16 @@ static inline int s3k_mon_vreg_get(s3k_index_t i, s3k_vreg_t reg, s3k_word_t *va
 	*value = a1;
 	return a0;
 }
+
+static inline int s3k_mon_state_get(s3k_index_t i, s3k_word_t *value)
+{
+	register s3k_word_t a0 __asm__("a0") = S3K_SYSCALL_MON_STATE_GET;
+	register s3k_word_t a1 __asm__("a1") = i;
+	__asm__ volatile("ecall" : "+r"(a0), "+r"(a1));
+	*value = a1;
+	return a0;
+}
+
 
 static inline int s3k_mon_vreg_set(s3k_index_t i, s3k_vreg_t reg, s3k_word_t value)
 {
