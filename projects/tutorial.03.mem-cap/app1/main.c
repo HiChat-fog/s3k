@@ -71,8 +71,8 @@ int main(void)
 	s3k_word_t ram_base = 0x80000000 + 0x1000000;
 	s3k_word_t ram_size = 0x10000;
 	s3k_word_t ram_perm = S3K_MEM_PERM_RWX; // Read/Write/Execute permissions
-	s3k_word_t ram_fuel = 2;
-	s3k_word_t ram_slot = 3;
+	s3k_word_t ram_fuel = 2; // size
+	s3k_word_t ram_slot = 3; // pmp slot
 	s3k_word_t idx = s3k_mem_derive(0, ram_fuel, ram_perm, ram_base, ram_size);
 	if (idx < 0) {
 		printf("Failed to derive memory capability %lx\n", ram_base);
