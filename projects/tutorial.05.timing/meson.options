@@ -1,0 +1,18 @@
+# Number of processes
+option('nproc', type : 'integer', value : 4)
+# Number of time slots per hart.
+option('ntimeslot', type : 'integer', value : 32)
+# Amount of fuel per memory capability
+option('nmemoryfuel', type : 'integer', value : 16)
+# Amount of fuel per time capability
+option('ntimefuel', type : 'integer', value : 32)
+# Amount of fuel per monitor capability
+option('nmonitorfuel', type : 'integer', value : 8)
+# Amount of fuel for initial ipc capability
+option('nipcfuel', type : 'integer', value : 16)
+# Execution platform
+option('platform', type : 'combo', choices : ['qemu_virt', 'qemu_virt4', 'cheshire', 'cheshire2'], value : 'qemu_virt4')
+# Context switch padding
+option('cspad', type : 'integer', value : 18000)
+# Stride in bytes between TI16750 UART registers on Cheshire-like platforms.
+option('uart_stride', type : 'combo', choices : ['1', '4'], value : '4', yield : true)
