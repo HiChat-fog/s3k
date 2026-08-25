@@ -1,0 +1,66 @@
+# Number of processes
+option('nproc', type : 'integer', value : 4)
+# Number of time slots per hart.
+option('ntimeslot', type : 'integer', value : 32)
+# Amount of fuel per memory capability
+option('nmemoryfuel', type : 'integer', value : 16)
+# Amount of fuel per time capability
+option('ntimefuel', type : 'integer', value : 32)
+# Amount of fuel per monitor capability
+option('nmonitorfuel', type : 'integer', value : 8)
+# Amount of fuel for initial ipc capability
+option('nipcfuel', type : 'integer', value : 16)
+# Execution platform
+option('platform', type : 'combo', choices : ['qemu_virt', 'cheshire', 'cheshire2', 'ch32v307'], value : 'qemu_virt')
+# Demo mode: build PID3 with a capability spanning PID2's RAM (simulates a
+# system with no PMP partitioning between partitions). Default = PMP on.
+option('demonopmp', type : 'boolean', value : false)
+# Demo mode: dynamic-PMP arm. PID3 is initially granted RW over PID2's gain
+# region (the CATE "trusted window"); the monitor revokes it at runtime when
+# it detects an untrusted PARAM_SET, and the subsequent write traps.
+option('demodynamic', type : 'boolean', value : false)
+# Trusted-boot negative test: use a deliberately wrong golden digest so the
+# image verification refuses to boot PID2 (tampered-image scenario).
+option('demobadboot', type : 'boolean', value : false)
+# I/O arm: PID3 drives a DMA-engine simulation (M-mode memcpy) to show that
+# standard PMP does not block a bus-master initiator, and that the monitor
+# must vet DMA descriptor targets instead.
+option('demoio', type : 'boolean', value : false)
+# Code-section arm: PID3 targets PID2's code (quad_control_step) instead of
+# the gain data, to verify that "code is read-only" holds too -- an overwrite
+# of the control routine (the "modify the attitude control logic" attack
+# surface) is blocked by PMP the same way a data write is.
+option('democodero', type : 'boolean', value : false)
+# Repeat arm: after each recovery the attacker partition re-enters its
+# MAVLink service loop and attacks again (N rounds). Verifies that recovery
+# is not a one-shot: a persistent attacker is blocked every round, the key
+# chain keeps ticking, and the partition finally resumes normal service.
+option('demorepeat', type : 'boolean', value : false)
+# I/O guard arm: the monitor registers PID2's key memory as a protected DMA
+# range, and the DMA engine simulation refuses transfers into it. This is
+# the positive verification of the I/O-side layered defense (monitor vets
+# DMA descriptor targets), completing the story that demoio exposes as a
+# limitation.
+option('demoioguard', type : 'boolean', value : false)
+# Pressure arm: repeat attack with 100 rounds (demorepeat defaults to 10).
+# Verifies that the block rate and per-round recovery latency do not degrade
+# under an order-of-magnitude heavier persistent attack, and that the key
+# chain keeps ticking throughout.
+option('demopressure', type : 'boolean', value : false)
+# Load-sensitivity arm: same static-PMP experiment with a tighter schedule
+# (PID2/PID3 slices 8 -> 4 slots each). Verifies that recovery latency does
+# not depend on the scheduling budget.
+option('demoload', type : 'boolean', value : false)
+# Context switch padding
+option('cspad', type : 'integer', value : 18000)
+# Stride in bytes between TI16750 UART registers on Cheshire-like platforms.
+option('uart_stride', type : 'combo', choices : ['1', '4'], value : '4', yield : true)
+# Mechanism-path timing arm: suppress the fault-report printf in the monitor
+# so the g_t recovery-window timestamps measure the mechanism path only
+# (suspend/reg_set/resume) without the fault line's UART serialization.
+option('demonofaultlog', type : 'boolean', value : false)
+# PMP integrity self-check arm: after the closed loop, the monitor readbacks
+# PID3's PMP entries, injects an equivalent fault (rogue RW entry over PID2's
+# RAM, as a glitch-flipped config would grant), verifies the readback DETECTS
+# it, then restores and verifies PASS again. States latch into SRAM globals.
+option('demopmpcheck', type : 'boolean', value : false)

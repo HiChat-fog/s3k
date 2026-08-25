@@ -58,6 +58,10 @@ enum {
 	S3K_SYSCALL_IPC_REPLYRECV,
 	S3K_SYSCALL_IPC_ASEND,
 	S3K_SYSCALL_IPC_ARECV,
+	S3K_SYSCALL_DMA_PROTECT, /* monitor: register a protected DMA range */
+	S3K_SYSCALL_DMA_SIM, /* DMA engine simulation (M-mode memcpy, no PMP) */
+	S3K_SYSCALL_DBG_PUTC, /* kernel-side debug console putc (CH32V307 USBFS CDC) */
+	S3K_SYSCALL_NOW, /* kernel-verified elapsed time, low 32 bits (CH32V307: STK @18 MHz) */
 };
 
 static inline s3k_pid_t s3k_pid_get(void)
@@ -697,5 +701,69 @@ static inline int s3k_ipc_arecv(s3k_index_t i, s3k_word_t *msg)
 	register s3k_word_t a1 __asm__("a1") = i;
 	__asm__ volatile("ecall" : "+r"(a0), "+r"(a1));
 	*msg = a1;
+	return a0;
+}
+
+/*
+ * Monitor-only: register (base,size) into DMA protected-range slot idx, or
+ * clear it with size=0. Every s3k_dma_sim transfer whose destination falls
+ * inside any registered range is refused before the copy runs. This is the
+ * demo stand-in for IOPMP/IOMMU-style vetting of DMA descriptor targets by
+ * the monitor (the I/O-side layered defense of the proposal).
+ */
+static inline int s3k_dma_protect(s3k_word_t idx, s3k_word_t base, s3k_word_t size)
+{
+	register s3k_word_t a0 __asm__("a0") = S3K_SYSCALL_DMA_PROTECT;
+	register s3k_word_t a1 __asm__("a1") = idx;
+	register s3k_word_t a2 __asm__("a2") = base;
+	register s3k_word_t a3 __asm__("a3") = size;
+	__asm__ volatile("ecall" : "+r"(a0) : "r"(a1), "r"(a2), "r"(a3));
+	return a0;
+}
+
+/*
+ * DMA engine simulation: the kernel performs an M-mode memcpy from src to
+ * dst for len bytes. This represents a bus-master DMA initiator that does
+ * NOT pass through the CPU's PMP checks (M-mode is unconstrained by default
+ * PMP). It exposes the PMP-doesn't-block-DMA limitation: a write the monitor
+ * does not vet reaches key memory. The monitor is expected to gate DMA
+ * descriptor targets before they reach this path (the I/O layered defense).
+ */
+static inline int s3k_dma_sim(s3k_word_t dst, s3k_word_t src, s3k_word_t len)
+{
+	register s3k_word_t a0 __asm__("a0") = S3K_SYSCALL_DMA_SIM;
+	register s3k_word_t a1 __asm__("a1") = dst;
+	register s3k_word_t a2 __asm__("a2") = src;
+	register s3k_word_t a3 __asm__("a3") = len;
+	__asm__ volatile("ecall" : "+r"(a0) : "r"(a1), "r"(a2), "r"(a3));
+	return a0;
+}
+
+/*
+ * Debug console mirror: mirrors one console byte into the kernel's debug
+ * console backend (CH32V307: USBFS CDC device; other platforms: no-op).
+ * Meant to be called from an app's __uart_putc right after the platform
+ * UART write, so the full printf/puts dialogue is observable even when the
+ * board has no physically wired UART channel.
+ */
+static inline void s3k_dbg_putc(unsigned char c)
+{
+	register s3k_word_t a0 __asm__("a0") = S3K_SYSCALL_DBG_PUTC;
+	register s3k_word_t a1 __asm__("a1") = c;
+	__asm__ volatile("ecall" : "+r"(a0) : "r"(a1));
+}
+
+/*
+ * Kernel-verified elapsed time: the kernel's own time source. On CH32V307
+ * that is the STK-based rtc_get_time(), which we validated against the RTC
+ * on the real board - NOT rdtime, whose high word is unspecified garbage on
+ * QingKe V4F. Returned masked to 32 bits (wraps at ~238 s @18 MHz). Two calls
+ * bracketing an interval yield a trusted delta; app1 uses this to cross-clock
+ * the bare rdtime() count against a known 18 MHz base.
+ */
+static inline s3k_word_t s3k_now(void)
+{
+	register s3k_word_t a0 __asm__("a0") = S3K_SYSCALL_NOW;
+	__asm__ volatile("ecall" : "+r"(a0));
 	return a0;
 }

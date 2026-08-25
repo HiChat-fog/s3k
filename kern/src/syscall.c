@@ -275,6 +275,9 @@ static proc_t *syscall_mem_pmp_get(pid_t pid, word_t args[8])
 static proc_t *syscall_mem_pmp_set(pid_t pid, word_t args[8])
 {
 	args[0] = mem_pmp_set(pid, args[1], args[2], args[3], args[4]);
+#ifdef PLATFORM_PREEMPT_STK
+	platform_proc_pmp_deny(pid);
+#endif
 	return current;
 }
 
@@ -559,6 +562,9 @@ static proc_t *syscall_mon_mem_pmp_set(pid_t pid, word_t args[8])
 	args[0] = ERR_INVALID_ACCESS;
 	if (target != INVALID_PID) {
 		args[0] = mem_pmp_set(target, args[2], args[3], args[4], args[5]);
+#ifdef PLATFORM_PREEMPT_STK
+		platform_proc_pmp_deny(target);
+#endif
 	}
 	return current;
 }
@@ -665,6 +671,101 @@ static proc_t *syscall_ipc_arecv(pid_t pid, word_t args[8])
 	return next;
 }
 
+/*
+ * DMA engine simulation. The kernel performs an M-mode memcpy(dst, src, len).
+ * This models a bus-master DMA initiator: the transfer is executed in M-mode
+ * and therefore bypasses the CPU-side PMP that constrains U-mode processes.
+ * It exists to expose the PMP-doesn't-block-DMA limitation and to let the
+ * monitor demonstrate gating DMA descriptor targets before they reach here.
+ *
+ * The monitor can register protected ranges (s3k_dma_protect): a transfer
+ * whose destination falls inside any registered range is refused before the
+ * copy runs. This is the demo-level stand-in for the I/O-side layered
+ * defense (IOPMP/IOMMU-style target vetting) that the proposal describes;
+ * with no ranges registered the behaviour is the unguarded limitation arm.
+ */
+#define DMA_PROTECT_MAX 4
+
+static struct {
+	word_t base;
+	word_t size;
+	bool active;
+} dma_protect[DMA_PROTECT_MAX];
+
+static bool dma_dst_protected(word_t dst, word_t len)
+{
+	for (int i = 0; i < DMA_PROTECT_MAX; i++) {
+		if (!dma_protect[i].active)
+			continue;
+		word_t lo = dma_protect[i].base;
+		word_t hi = dma_protect[i].base + dma_protect[i].size;
+		/* range overlap check: any byte of [dst, dst+len) inside */
+		if (dst < hi && dst + len > lo)
+			return true;
+	}
+	return false;
+}
+
+static proc_t *syscall_dma_protect(pid_t pid, word_t args[8])
+{
+	(void)pid;
+	word_t idx = args[1];
+	word_t base = args[2];
+	word_t size = args[3];
+	if (idx >= DMA_PROTECT_MAX) {
+		args[0] = -1;
+		return current;
+	}
+	dma_protect[idx].base = base;
+	dma_protect[idx].size = size;
+	dma_protect[idx].active = (size != 0);
+	args[0] = 0;
+	return current;
+}
+
+static proc_t *syscall_dma_sim(pid_t pid, word_t args[8])
+{
+	(void)pid;
+	word_t dst = args[1];
+	word_t src = args[2];
+	word_t len = args[3];
+	/* Monitor-vetted DMA gate: refuse transfers into protected ranges. */
+	if (dma_dst_protected(dst, len)) {
+		args[0] = -1; /* refused: destination is a protected range */
+		return current;
+	}
+	/* M-mode memcpy: not gated by PMP (the limitation being demonstrated). */
+	volatile uint8_t *d = (volatile uint8_t *)dst;
+	const uint8_t *s = (const uint8_t *)src;
+	for (word_t i = 0; i < len; i++)
+		d[i] = s[i];
+	args[0] = 0; /* success: the DMA transfer landed */
+	return current;
+}
+
+/* Mirror app output into the USBFS CDC console (kern/platform/usbfs_cdc.c).
+ * Weak so platforms without the driver link unchanged. */
+extern void usbfs_cdc_putc(char c) __attribute__((weak));
+
+static proc_t *syscall_dbg_putc(pid_t pid, word_t args[8])
+{
+	(void)pid;
+	if (usbfs_cdc_putc)
+		usbfs_cdc_putc((char)(args[1] & 0xFF));
+	args[0] = 0;
+	return current;
+}
+
+/**
+ * Kernel-verified elapsed time, low 32 bits.
+ */
+static proc_t *syscall_now(pid_t pid, word_t args[8])
+{
+	(void)pid;
+	args[0] = (word_t)rtc_get_time();
+	return current;
+}
+
 /**
  * Handler type for system calls.
  */
@@ -730,6 +831,10 @@ handler_t handlers[] = {
 	syscall_ipc_replyrecv,
 	syscall_ipc_asend,
 	syscall_ipc_arecv,
+	syscall_dma_protect,
+	syscall_dma_sim,
+	syscall_dbg_putc,
+	syscall_now,
 };
 
 /**

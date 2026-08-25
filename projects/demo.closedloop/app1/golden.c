@@ -1,0 +1,19 @@
+/* golden.c - SHA-256 digest of the untampered PID2 image, measured by the
+ * boot-time monitor in a reference run. This is the REAL-MACHINE golden:
+ * SHA-256 of app2.bin (SRAM 0x20008000, CH32V307 8/22 验证版, md5 of the
+ * 25224-byte image = 57d85c81...). Keep this value for ch32 builds; the
+ * QEMU rv64 golden (0x80020000 image) is restored by tools/update_golden.sh
+ * when running the simulator arms.
+ */
+#include <stdint.h>
+
+const uint8_t golden_ref[32] = {
+	0x6b, 0xe0, 0x84, 0x59,
+	0xdf, 0xc3, 0x6b, 0x11,
+	0x6e, 0x8c, 0xf8, 0xe5,
+	0x60, 0x4e, 0xea, 0xd5,
+	0x41, 0xcd, 0x03, 0x64,
+	0xdc, 0x63, 0xef, 0x66,
+	0xa2, 0xa6, 0x38, 0x4e,
+	0x68, 0x66, 0x76, 0x8a,
+};
