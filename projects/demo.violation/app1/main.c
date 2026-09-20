@@ -84,7 +84,7 @@ int main(void)
 	puts("attempting write to PMP-forbidden address 0x82000000...");
 
 	// Deliberate store to an address no PMP slot authorises. A volatile
-	// uint64_t pointer forces a real 'sd' (store) instruction, which raises a
+	// uint64_t pointer forces a real store (compiled to two sw on RV32), which raises a
 	// STORE/AMO access fault (ecause=0x7) with eval equal to 0x82000000.
 	volatile uint64_t *forbidden = (volatile uint64_t *)0x82000000;
 	*forbidden = 0xdeadbeef;
