@@ -3,9 +3,8 @@
  * The board's USART1 pins (PA9/PA10) have no electrically connected debug
  * channel (R20/R34 0-ohm optionals unpopulated), so the kernel runs a small
  * USBFS device stack instead: the chip's own USB connector turns into a CDC
- * ACM serial port on the PC (/dev/ttyACM*), and every app-side putc is
- * mirrored through S3K_SYSCALL_DBG_PUTC (63) into a kernel-side ring that
- * is drained onto EP3 (bulk IN).
+ * ACM serial port on the PC (/dev/ttyACM*), and kernel console output is
+ * drained onto EP3 (bulk IN).
  *
  * All state and code is kernel-side: M-mode ring, endpoint buffers and the
  * controller registers themselves. No physical wiring is needed.
@@ -30,9 +29,8 @@ void usbfs_cdc_enum_wait(void);
  * EP1/EP3 IN completions, EP2 OUT discard. Never blocks; never schedules. */
 void usbfs_cdc_irq(void);
 
-/* Console byte entry point (from S3K_SYSCALL_DBG_PUTC). Pushes onto the
- * TX ring and arms EP3 if idle. Bytes are dropped (and counted) when the
- * ring is full - this can only happen when no host is attached, since a
+/* Console byte entry point. Pushes onto the TX ring and arms EP3 if idle.
+ * Bytes are dropped (and counted) when the ring is full - this can only happen when no host is attached, since a
  * live CDC link drains the ring orders of magnitude faster than the
  * partitions print. */
 void usbfs_cdc_putc(char c);
